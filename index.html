@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>긴급 연락 앱</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#E8192C">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="긴급연락">
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;700;900&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #FFF8F0; --red: #E8192C; --red-glow: rgba(232,25,44,0.3);
+    --blue: #1565C0; --green: #2E7D32; --orange: #E65100;
+    --text: #1A1A1A; --sub: #555; --card: #FFFFFF; --border: #E0D0C0;
+  }
+  body { font-family: 'Noto Sans KR', sans-serif; background: var(--bg); min-height: 100vh; display: flex; flex-direction: column; align-items: center; padding: 0 0 40px 0; color: var(--text); }
+
+  header { width: 100%; background: var(--red); padding: 22px 24px 18px; text-align: center; box-shadow: 0 4px 16px rgba(0,0,0,0.18); }
+  header h1 { font-size: 2rem; font-weight: 900; color: #fff; }
+  header p { font-size: 1.05rem; color: rgba(255,255,255,0.88); margin-top: 4px; }
+
+  .clock-box { margin: 28px 20px 0; background: var(--card); border: 2px solid var(--border); border-radius: 20px; padding: 18px 24px; text-align: center; width: calc(100% - 40px); max-width: 500px; box-shadow: 0 2px 10px rgba(0,0,0,0.07); }
+  #clock { font-size: 3rem; font-weight: 900; color: var(--text); letter-spacing: 2px; }
+  #date { font-size: 1.25rem; color: var(--sub); margin-top: 4px; }
+
+  .section-header { width: calc(100% - 40px); max-width: 500px; display: flex; align-items: center; justify-content: space-between; margin: 28px 0 12px; }
+  .section-title { font-size: 1.3rem; font-weight: 900; color: var(--sub); border-left: 5px solid var(--red); padding-left: 12px; }
+  .edit-btn { background: #fff; border: 2px solid var(--border); border-radius: 12px; padding: 8px 16px; font-size: 1rem; font-weight: 700; font-family: inherit; color: var(--sub); cursor: pointer; }
+  .edit-btn:active { background: #F0E8E0; }
+
+  .sos-wrap { width: calc(100% - 40px); max-width: 500px; }
+  .sos-btn { width: 100%; background: var(--red); color: #fff; border: none; border-radius: 24px; padding: 36px 20px; font-size: 2.6rem; font-weight: 900; font-family: inherit; cursor: pointer; box-shadow: 0 8px 24px var(--red-glow); transition: transform 0.1s; display: flex; flex-direction: column; align-items: center; gap: 8px; animation: pulse 2.5s infinite; }
+  @keyframes pulse { 0%,100% { box-shadow: 0 8px 24px var(--red-glow); } 50% { box-shadow: 0 8px 40px rgba(232,25,44,0.55); } }
+  .sos-btn:active { transform: scale(0.97); animation: none; }
+  .sos-btn .sos-sub { font-size: 1.1rem; font-weight: 700; opacity: 0.88; }
+
+  .contacts-grid { width: calc(100% - 40px); max-width: 500px; display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .contact-btn { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 26px 12px; border: none; border-radius: 20px; font-family: inherit; font-weight: 900; color: #fff; cursor: pointer; box-shadow: 0 4px 14px rgba(0,0,0,0.15); transition: transform 0.1s; }
+  .contact-btn:active { transform: scale(0.96); }
+  .contact-btn .c-icon { font-size: 2.2rem; }
+  .contact-btn .c-name { font-size: 1.2rem; }
+  .contact-btn .c-num { font-size: 0.95rem; font-weight: 400; opacity: 0.85; }
+  .btn-blue { background: var(--blue); }
+  .btn-green { background: var(--green); }
+  .btn-orange { background: var(--orange); }
+  .btn-purple { background: #6A1B9A; }
+
+  .numbers-list { width: calc(100% - 40px); max-width: 500px; display: flex; flex-direction: column; gap: 12px; }
+  .num-row { background: var(--card); border: 2px solid var(--border); border-radius: 16px; display: flex; align-items: center; justify-content: space-between; padding: 18px 20px; cursor: pointer; transition: background 0.15s; box-shadow: 0 2px 8px rgba(0,0,0,0.06); }
+  .num-row:active { background: #F0E8E0; }
+  .num-left { display: flex; align-items: center; gap: 14px; }
+  .num-icon { font-size: 2rem; }
+  .num-name { font-size: 1.35rem; font-weight: 700; }
+  .num-num { font-size: 1.5rem; font-weight: 900; color: var(--blue); }
+
+  /* ── 공통 모달 ── */
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100; align-items: center; justify-content: center; }
+  .modal-overlay.show { display: flex; }
+  .modal { background: #fff; border-radius: 28px; padding: 32px 24px 24px; width: 92%; max-width: 440px; box-shadow: 0 20px 60px rgba(0,0,0,0.35); animation: popIn 0.25s cubic-bezier(.34,1.56,.64,1); }
+  @keyframes popIn { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+  /* 전화 확인 모달 */
+  .modal.call-modal { text-align: center; }
+  .modal-icon { font-size: 4rem; margin-bottom: 12px; }
+  .modal h2 { font-size: 2rem; font-weight: 900; margin-bottom: 8px; }
+  .modal p { font-size: 1.2rem; color: var(--sub); margin-bottom: 28px; line-height: 1.6; }
+  .modal-btns { display: flex; gap: 12px; }
+  .modal-cancel { flex: 1; padding: 18px; border: 3px solid var(--border); border-radius: 16px; background: #fff; font-size: 1.3rem; font-weight: 700; font-family: inherit; cursor: pointer; color: var(--sub); }
+  .modal-call { flex: 2; padding: 18px; border: none; border-radius: 16px; font-size: 1.4rem; font-weight: 900; font-family: inherit; cursor: pointer; color: #fff; background: var(--red); }
+  .modal-call.blue { background: var(--blue); }
+
+  /* 편집 모달 */
+  .edit-modal h2 { font-size: 1.7rem; font-weight: 900; margin-bottom: 20px; text-align: center; }
+  .edit-item { background: #F8F4F0; border-radius: 16px; padding: 18px; margin-bottom: 14px; }
+  .edit-item-title { font-size: 1.1rem; font-weight: 700; color: var(--sub); margin-bottom: 10px; }
+  .edit-row { display: flex; flex-direction: column; gap: 8px; margin-bottom: 8px; }
+  .edit-row label { font-size: 1rem; font-weight: 700; color: var(--sub); }
+  .edit-row input { width: 100%; padding: 14px 16px; border: 2px solid var(--border); border-radius: 12px; font-size: 1.2rem; font-family: inherit; font-weight: 700; color: var(--text); background: #fff; }
+  .edit-row input:focus { outline: none; border-color: var(--blue); }
+  .save-btn { width: 100%; padding: 20px; background: var(--blue); color: #fff; border: none; border-radius: 16px; font-size: 1.4rem; font-weight: 900; font-family: inherit; cursor: pointer; margin-top: 8px; }
+  .save-btn:active { filter: brightness(0.9); }
+  .edit-close { width: 100%; padding: 16px; background: #fff; color: var(--sub); border: 2px solid var(--border); border-radius: 16px; font-size: 1.2rem; font-weight: 700; font-family: inherit; cursor: pointer; margin-top: 10px; }
+
+  footer { margin-top: 36px; font-size: 1rem; color: #AAA; text-align: center; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🏠 우리 가족 긴급 연락</h1>
+  <p>버튼을 크게 눌러 전화하세요</p>
+</header>
+
+<div class="clock-box">
+  <div id="clock">00:00:00</div>
+  <div id="date">날짜 로딩 중...</div>
+</div>
+
+<p class="section-title" style="width:calc(100% - 40px);max-width:500px;margin:28px 0 12px;border-left:5px solid var(--red);padding-left:12px;">🚨 긴급 신고</p>
+<div class="sos-wrap">
+  <button class="sos-btn" onclick="callNumber('119','119 소방서·구급대','🚒')">
+    <span>🆘</span>
+    <span>119  긴급 구조 요청</span>
+    <span class="sos-sub">소방서 · 구급대 · 응급실 안내</span>
+  </button>
+</div>
+
+<!-- 가족 연락처 -->
+<div class="section-header">
+  <span class="section-title">👨‍👩‍👧 가족에게 전화</span>
+  <button class="edit-btn" onclick="openEdit()">✏️ 번호 수정</button>
+</div>
+<div class="contacts-grid" id="contacts-grid"></div>
+
+<p class="section-title" style="width:calc(100% - 40px);max-width:500px;margin:28px 0 12px;border-left:5px solid var(--red);padding-left:12px;">📞 유용한 전화번호</p>
+<div class="numbers-list">
+  <div class="num-row" onclick="callNumber('112','경찰서','🚔')"><div class="num-left"><span class="num-icon">🚔</span><span class="num-name">경찰서</span></div><span class="num-num">112</span></div>
+  <div class="num-row" onclick="callNumber('129','보건복지부 상담','🏥')"><div class="num-left"><span class="num-icon">🏥</span><span class="num-name">복지 상담</span></div><span class="num-num">129</span></div>
+  <div class="num-row" onclick="callNumber('1339','의료 상담','💊')"><div class="num-left"><span class="num-icon">💊</span><span class="num-name">의료 상담</span></div><span class="num-num">1339</span></div>
+  <div class="num-row" onclick="callNumber('110','정부 민원','🏛️')"><div class="num-left"><span class="num-icon">🏛️</span><span class="num-name">정부 민원</span></div><span class="num-num">110</span></div>
+</div>
+
+<footer>✏️ 번호 수정 버튼으로 연락처를 바꿀 수 있어요</footer>
+
+<!-- 전화 확인 모달 -->
+<div class="modal-overlay" id="call-modal">
+  <div class="modal call-modal">
+    <div class="modal-icon" id="m-icon">📞</div>
+    <h2 id="m-name">전화하기</h2>
+    <p id="m-num">연결 중...</p>
+    <div class="modal-btns">
+      <button class="modal-cancel" onclick="closeCallModal()">취소</button>
+      <button class="modal-call" id="m-call-btn" onclick="doCall()">📞 전화하기</button>
+    </div>
+  </div>
+</div>
+
+<!-- 편집 모달 -->
+<div class="modal-overlay" id="edit-modal">
+  <div class="modal edit-modal" style="max-height:90vh;overflow-y:auto;">
+    <h2>✏️ 가족 연락처 수정</h2>
+    <div id="edit-fields"></div>
+    <button class="save-btn" onclick="saveContacts()">💾 저장하기</button>
+    <button class="edit-close" onclick="closeEdit()">닫기</button>
+  </div>
+</div>
+
+<script>
+  // ── 기본 연락처 데이터 ──
+  const DEFAULT_CONTACTS = [
+    { icon: '👨', name: '큰아들',  num: '010-1234-5678', color: 'btn-blue' },
+    { icon: '👩', name: '딸',      num: '010-2345-6789', color: 'btn-green' },
+    { icon: '🧒', name: '막내아들',num: '010-3456-7890', color: 'btn-orange' },
+    { icon: '👰', name: '며느리',  num: '010-4567-8901', color: 'btn-purple' },
+  ];
+
+  // 저장된 연락처 불러오기 (없으면 기본값)
+  function loadContacts() {
+    try {
+      const saved = localStorage.getItem('contacts');
+      return saved ? JSON.parse(saved) : DEFAULT_CONTACTS;
+    } catch(e) { return DEFAULT_CONTACTS; }
+  }
+
+  function saveToStorage(contacts) {
+    try { localStorage.setItem('contacts', JSON.stringify(contacts)); } catch(e) {}
+  }
+
+  // ── 연락처 버튼 렌더링 ──
+  function renderContacts() {
+    const contacts = loadContacts();
+    const grid = document.getElementById('contacts-grid');
+    grid.innerHTML = contacts.map((c, i) => `
+      <button class="contact-btn ${c.color}" onclick="callNumber('${c.num}','${c.name}','${c.icon}')">
+        <span class="c-icon">${c.icon}</span>
+        <span class="c-name">${c.name}</span>
+        <span class="c-num">${c.num}</span>
+      </button>
+    `).join('');
+  }
+
+  // ── 시계 ──
+  function updateClock() {
+    const now = new Date();
+    const hh = String(now.getHours()).padStart(2,'0');
+    const mm = String(now.getMinutes()).padStart(2,'0');
+    const ss = String(now.getSeconds()).padStart(2,'0');
+    document.getElementById('clock').textContent = `${hh}:${mm}:${ss}`;
+    const days = ['일','월','화','수','목','금','토'];
+    const y = now.getFullYear(), mo = now.getMonth()+1, d = now.getDate(), wd = days[now.getDay()];
+    document.getElementById('date').textContent = `${y}년 ${mo}월 ${d}일 (${wd}요일)`;
+  }
+
+  // ── 전화 모달 ──
+  let pendingNumber = '';
+  function callNumber(num, name, icon) {
+    pendingNumber = num;
+    document.getElementById('m-icon').textContent = icon;
+    document.getElementById('m-name').textContent = name + '에게 전화';
+    document.getElementById('m-num').textContent = num + ' 으로 연결합니다';
+    document.getElementById('m-call-btn').className = num === '119' ? 'modal-call' : 'modal-call blue';
+    document.getElementById('call-modal').classList.add('show');
+  }
+  function closeCallModal() { document.getElementById('call-modal').classList.remove('show'); pendingNumber = ''; }
+  function doCall() { if (pendingNumber) window.location.href = 'tel:' + pendingNumber; closeCallModal(); }
+  document.getElementById('call-modal').addEventListener('click', function(e) { if (e.target === this) closeCallModal(); });
+
+  // ── 편집 모달 ──
+  function openEdit() {
+    const contacts = loadContacts();
+    const fields = document.getElementById('edit-fields');
+    fields.innerHTML = contacts.map((c, i) => `
+      <div class="edit-item">
+        <div class="edit-item-title">${c.icon} ${i+1}번째 연락처</div>
+        <div class="edit-row">
+          <label>이름</label>
+          <input type="text" id="edit-name-${i}" value="${c.name}" placeholder="이름 입력">
+        </div>
+        <div class="edit-row">
+          <label>전화번호</label>
+          <input type="tel" id="edit-num-${i}" value="${c.num}" placeholder="010-0000-0000">
+        </div>
+      </div>
+    `).join('');
+    document.getElementById('edit-modal').classList.add('show');
+  }
+
+  function saveContacts() {
+    const contacts = loadContacts();
+    contacts.forEach((c, i) => {
+      const nameEl = document.getElementById(`edit-name-${i}`);
+      const numEl  = document.getElementById(`edit-num-${i}`);
+      if (nameEl) c.name = nameEl.value.trim() || c.name;
+      if (numEl)  c.num  = numEl.value.trim()  || c.num;
+    });
+    saveToStorage(contacts);
+    renderContacts();
+    closeEdit();
+    alert('✅ 저장되었습니다!');
+  }
+
+  function closeEdit() { document.getElementById('edit-modal').classList.remove('show'); }
+  document.getElementById('edit-modal').addEventListener('click', function(e) { if (e.target === this) closeEdit(); });
+
+  // ── 초기화 ──
+  updateClock();
+  setInterval(updateClock, 1000);
+  renderContacts();
+
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+</script>
+</body>
+</html>
